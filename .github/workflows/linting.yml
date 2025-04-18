@@ -1,0 +1,63 @@
+name: Lint and Commit changes
+
+on:
+  # Add automatic running on PRs
+  pull_request:
+    branches:
+      - main
+      - prod
+      - stage
+
+  # Add manual trigger
+  workflow_dispatch:
+
+jobs:
+  lint:
+    name: Lint and Commit changes
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Setup Bun
+        run: npm i -g bun
+
+      - name: Install dependencies
+        run: bun i
+
+      - name: Run linter with auto-fix
+        run: bun run lint:fix
+
+      - name: Check for changes
+        id: git-check
+        run: |
+          git diff --exit-code || echo "changed=true" >> $GITHUB_OUTPUT
+
+      - name: Commit linting fixes
+        if: steps.git-check.outputs.changed == 'true'
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add .
+          git commit -m "Auto-fix linting issues"
+          git push
+
+      - name: Add PR comment about linting
+        # Only add comment if it's a PR event and changes were made
+        if: github.event_name == 'pull_request' && steps.git-check.outputs.changed == 'true'
+        uses: thollander/actions-comment-pull-request@v2
+        with:
+          message: "✅ Automated linting fixes have been applied and committed."
+          comment_tag: lint-action
