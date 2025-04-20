@@ -26,5 +26,8 @@
     "*.{js,jsx,ts,tsx}": [
       "bun run lint:fix"
     ]
+  },
+  "dependencies": {
+    "@types/bun": "^1.2.10"
   }
 }
